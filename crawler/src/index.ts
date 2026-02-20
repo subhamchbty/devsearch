@@ -1,6 +1,6 @@
-import express, { Request, Response } from "express";
+import express, { Express, Request, Response } from "express";
 
-const app = express();
+const app: Express = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
