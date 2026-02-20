@@ -239,11 +239,13 @@ User interactions (clicks, upvotes) influence ranking adjustments.
 
 # Technology Stack (Initial)
 
-* Node.js (API + worker)
+* NestJS (Search API — Engine)
+* Express + TypeScript (Background services — Crawler, Indexer, Embedder)
 * Next.js (Frontend)
-* PostgreSQL + pgvector
-* Redis (optional caching)
-* Dockerized deployment
+* PostgreSQL 17 + pgvector
+* Redis (caching)
+* pnpm (package manager)
+* Dockerized deployment (Dev Containers)
 
 ---
 

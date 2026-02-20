@@ -91,19 +91,19 @@ DevSearch aims to:
 Background Pipeline:
 ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
 │ Crawler  │ → │ Indexer  │ → │ Embedder │ → │  Store   │
-│(NestJS)  │   │(NestJS)  │   │(NestJS)  │   │ (DB/Vec) │
+│(Express) │   │(Express) │   │(Express) │   │ (DB/Vec) │
 └──────────┘   └──────────┘   └──────────┘   └──────────┘
 ```
 
 ### Core Services
 
-| Service | Responsibility |
-|---------|---------------|
-| **engine** | Search API — query processing, hybrid search, result ranking |
-| **crawler** | Documentation ingestion — crawl, extract, deduplicate |
-| **indexer** | Indexing pipeline — clean, chunk, attach metadata |
-| **embedder** | Embedding generation for chunks and queries |
-| **client** | Next.js frontend — search UI |
+| Service      | Responsibility                                               |
+| ------------ | ------------------------------------------------------------ |
+| **engine**   | Search API — query processing, hybrid search, result ranking |
+| **crawler**  | Documentation ingestion — crawl, extract, deduplicate        |
+| **indexer**  | Indexing pipeline — clean, chunk, attach metadata            |
+| **embedder** | Embedding generation for chunks and queries                  |
+| **client**   | Next.js frontend — search UI                                 |
 
 ### Key Architecture Decisions
 
@@ -117,16 +117,16 @@ Background Pipeline:
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 16, React 19, Tailwind CSS 4, TypeScript 5 |
-| Backend Services | NestJS 11, TypeScript 5.7 |
-| Primary Database | PostgreSQL 14+ |
-| Vector Storage | pgvector (MVP) → Qdrant (scale) |
-| Caching | Redis (optional) |
-| Package Manager | pnpm (workspaces / monorepo) |
-| Testing | Jest 30 |
-| Linting / Formatting | ESLint 9, Prettier 3 |
+| Layer                                            | Technology                                         |
+| ------------------------------------------------ | -------------------------------------------------- |
+| Frontend                                         | Next.js 16, React 19, Tailwind CSS 4, TypeScript 5 |
+| Search API (Engine)                              | NestJS 11, TypeScript 5                            |
+| Background Services (Crawler, Indexer, Embedder) | Express 5, TypeScript 5                            |
+| Primary Database                                 | PostgreSQL 17+ with pgvector                       |
+| Vector Storage                                   | pgvector (MVP) → Qdrant (scale)                    |
+| Caching                                          | Redis 7                                            |
+| Package Manager                                  | pnpm                                               |
+| Linting / Formatting                             | ESLint 9, Prettier 3                               |
 
 ---
 
@@ -136,17 +136,17 @@ Background Pipeline:
 devsearch/
 ├── client/          # Next.js frontend (search UI)
 ├── engine/          # Search API service (NestJS)
-├── crawler/         # Documentation crawler service (NestJS)
-├── indexer/         # Indexing pipeline worker (NestJS)
-├── embedder/        # Embedding generation service (NestJS)
-├── pnpm-workspace.yaml
+├── crawler/         # Documentation crawler service (Express)
+├── indexer/         # Indexing pipeline worker (Express)
+├── embedder/        # Embedding generation service (Express)
+├── .devcontainer/   # Dev container configuration
 └── project-requirements.md
 ```
 
-Each service follows the NestJS module structure:
+The **engine** service uses the NestJS module structure:
 
 ```
-<service>/
+engine/
 ├── src/
 │   ├── main.ts
 │   ├── app.module.ts
@@ -157,14 +157,24 @@ Each service follows the NestJS module structure:
 └── tsconfig.json
 ```
 
+The **crawler**, **indexer**, and **embedder** services use a lightweight Express setup:
+
+```
+<service>/
+├── src/
+│   └── index.ts
+├── package.json
+└── tsconfig.json
+```
+
 ---
 
 ## Prerequisites
 
-- **Node.js** 18 LTS or later
-- **pnpm** 8.0 or later — `npm install -g pnpm`
-- **PostgreSQL** 14+ with the [pgvector](https://github.com/pgvector/pgvector) extension
-- **Docker** (optional, for containerised deployment)
+- **Node.js** 22 LTS or later
+- **pnpm** (latest) — `npm install -g pnpm`
+- **PostgreSQL** 17+ with the [pgvector](https://github.com/pgvector/pgvector) extension
+- **Docker** (recommended — the project includes a full dev container setup)
 
 ---
 
@@ -175,9 +185,13 @@ Each service follows the NestJS module structure:
 git clone https://github.com/subhamchbty/devsearch.git
 cd devsearch
 
-# 2. Install all workspace dependencies
-pnpm install
+# 2. Install dependencies for each service
+for svc in client crawler embedder engine indexer; do
+  (cd $svc && pnpm install)
+done
 ```
+
+Or simply open the project in a **GitHub Codespace** / **VS Code Dev Container** — the `postCreateCommand` installs everything automatically.
 
 ---
 
@@ -189,33 +203,35 @@ Open a separate terminal for each service:
 
 ```bash
 # Frontend — http://localhost:3000
-cd client && pnpm run dev
+cd client && pnpm dev
 
-# Search API
+# Search API — http://localhost:3004
 cd engine && pnpm run start:dev
 
-# Crawler
-cd crawler && pnpm run start:dev
+# Crawler — http://localhost:3001
+cd crawler && pnpm dev
 
-# Indexer
-cd indexer && pnpm run start:dev
+# Indexer — http://localhost:3002
+cd indexer && pnpm dev
 
-# Embedder
-cd embedder && pnpm run start:dev
+# Embedder — http://localhost:3003
+cd embedder && pnpm dev
 ```
 
 ### Production
 
 ```bash
 # Build all services
-pnpm --recursive run build
+for svc in client crawler embedder engine indexer; do
+  (cd $svc && pnpm run build)
+done
 
 # Start each service
+cd client   && pnpm start
 cd engine   && pnpm run start:prod
-cd crawler  && pnpm run start:prod
-cd indexer  && pnpm run start:prod
-cd embedder && pnpm run start:prod
-cd client   && pnpm run start
+cd crawler  && pnpm start
+cd indexer  && pnpm start
+cd embedder && pnpm start
 ```
 
 ---
@@ -254,10 +270,10 @@ pnpm run format
 
 Create a `.env` file in the root of each service (or in the monorepo root) as needed.
 
-### Engine / General
+### Engine
 
 ```env
-PORT=3000
+PORT=3004
 NODE_ENV=development
 ```
 
@@ -314,11 +330,11 @@ CRAWLER_USER_AGENT=DevSearchBot/1.0
 
 ## Roadmap
 
-| Phase | Status | Highlights |
-|-------|--------|-----------|
-| Phase 1 | 🚧 In Progress | Hybrid search, 10 frameworks, snippet results, clean UI |
-| Phase 2 | 📋 Planned | LLM explanations (RAG), version filtering UI, feedback system |
-| Phase 3 | 🔭 Future | CLI tool, VSCode extension, personalization, analytics dashboard |
+| Phase   | Status         | Highlights                                                       |
+| ------- | -------------- | ---------------------------------------------------------------- |
+| Phase 1 | 🚧 In Progress | Hybrid search, 10 frameworks, snippet results, clean UI          |
+| Phase 2 | 📋 Planned     | LLM explanations (RAG), version filtering UI, feedback system    |
+| Phase 3 | 🔭 Future      | CLI tool, VSCode extension, personalization, analytics dashboard |
 
 ---
 
