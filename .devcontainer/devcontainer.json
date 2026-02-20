@@ -1,157 +1,157 @@
 {
-  "name": "DevSearch",
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
-  "workspaceFolder": "/workspaces/devsearch",
+    "name": "DevSearch",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspaces/devsearch",
 
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "22",
-      "pnpmVersion": "latest"
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "22",
+            "pnpmVersion": "latest"
+        },
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {}
     },
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
 
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        // TypeScript & JavaScript
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // TypeScript & JavaScript
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
 
-        // Tailwind CSS
-        "bradlc.vscode-tailwindcss",
+                // Tailwind CSS
+                "bradlc.vscode-tailwindcss",
 
-        // NestJS
-        "ashinzekene.nestjs",
+                // NestJS
+                "ashinzekene.nestjs",
 
-        // Testing
-        "orta.vscode-jest",
+                // Testing
+                "orta.vscode-jest",
 
-        // Docker & Infrastructure
-        "ms-azuretools.vscode-docker",
+                // Docker & Infrastructure
+                "ms-azuretools.vscode-docker",
 
-        // Database
-        "cweijan.vscode-postgresql-client2",
+                // Database
+                "cweijan.vscode-postgresql-client2",
 
-        // REST API testing
-        "humao.rest-client",
+                // REST API testing
+                "humao.rest-client",
 
-        // Git
-        "eamodio.gitlens",
-        "mhutchie.git-graph",
+                // Git
+                "eamodio.gitlens",
+                "mhutchie.git-graph",
 
-        // DX utilities
-        "usernamehw.errorlens",
-        "christian-kohler.path-intellisense",
-        "mikestead.dotenv",
-        "EditorConfig.EditorConfig",
+                // DX utilities
+                "usernamehw.errorlens",
+                "christian-kohler.path-intellisense",
+                "mikestead.dotenv",
+                "EditorConfig.EditorConfig",
 
-        // Markdown
-        "yzhang.markdown-all-in-one",
+                // Markdown
+                "yzhang.markdown-all-in-one",
 
-        // GitHub Copilot
-        "GitHub.copilot",
-        "GitHub.copilot-chat"
-      ],
-      "settings": {
-        // Editor
-        "editor.formatOnSave": true,
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "editor.codeActionsOnSave": {
-          "source.fixAll.eslint": "explicit",
-          "source.organizeImports": "explicit"
-        },
-        "editor.tabSize": 4,
-        "editor.bracketPairColorization.enabled": true,
-        "editor.guides.bracketPairs": "active",
+                // GitHub Copilot
+                "GitHub.copilot",
+                "GitHub.copilot-chat"
+            ],
+            "settings": {
+                // Editor
+                "editor.formatOnSave": true,
+                "editor.defaultFormatter": "esbenp.prettier-vscode",
+                "editor.codeActionsOnSave": {
+                    "source.fixAll.eslint": "explicit",
+                    "source.organizeImports": "explicit"
+                },
+                "editor.tabSize": 4,
+                "editor.bracketPairColorization.enabled": true,
+                "editor.guides.bracketPairs": "active",
 
-        // TypeScript
-        "typescript.preferences.importModuleSpecifier": "relative",
-        "typescript.updateImportsOnFileMove.enabled": "always",
-        "typescript.suggest.autoImports": true,
+                // TypeScript
+                "typescript.preferences.importModuleSpecifier": "relative",
+                "typescript.updateImportsOnFileMove.enabled": "always",
+                "typescript.suggest.autoImports": true,
 
-        // ESLint
-        "eslint.workingDirectories": [
-          "client",
-          "crawler",
-          "embedder",
-          "engine",
-          "indexer"
-        ],
+                // ESLint
+                "eslint.workingDirectories": [
+                    "client",
+                    "crawler",
+                    "embedder",
+                    "engine",
+                    "indexer"
+                ],
 
-        // Files
-        "files.eol": "\n",
-        "files.trimTrailingWhitespace": true,
-        "files.insertFinalNewline": true,
-        "files.exclude": {
-          "**/node_modules": true,
-          "**/dist": true,
-          "**/.next": true
-        },
+                // Files
+                "files.eol": "\n",
+                "files.trimTrailingWhitespace": true,
+                "files.insertFinalNewline": true,
+                "files.exclude": {
+                    "**/node_modules": true,
+                    "**/dist": true,
+                    "**/.next": true
+                },
 
-        // Search
-        "search.exclude": {
-          "**/node_modules": true,
-          "**/dist": true,
-          "**/.next": true,
-          "**/pnpm-lock.yaml": true
-        },
+                // Search
+                "search.exclude": {
+                    "**/node_modules": true,
+                    "**/dist": true,
+                    "**/.next": true,
+                    "**/pnpm-lock.yaml": true
+                },
 
-        // Terminal
-        "terminal.integrated.defaultProfile.linux": "zsh",
+                // Terminal
+                "terminal.integrated.defaultProfile.linux": "zsh",
 
-        // Tailwind CSS
-        "tailwindCSS.experimental.classRegex": [
-          ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
-          ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
-        ],
+                // Tailwind CSS
+                "tailwindCSS.experimental.classRegex": [
+                    ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+                    ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+                ],
 
-        // Jest
-        "jest.rootPath": "",
-        "jest.jestCommandLine": "pnpm test --",
+                // Jest
+                "jest.rootPath": "",
+                "jest.jestCommandLine": "pnpm test --",
 
-        // Prettier
-        "[typescript]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[typescriptreact]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[javascript]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[json]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[jsonc]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
-        },
-        "[markdown]": {
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
+                // Prettier
+                "[typescript]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[typescriptreact]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[javascript]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[json]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[jsonc]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                },
+                "[markdown]": {
+                    "editor.defaultFormatter": "esbenp.prettier-vscode"
+                }
+            }
         }
-      }
+    },
+
+    "forwardPorts": [3000, 3001, 3002, 3003, 3004, 5432, 6379],
+    "portsAttributes": {
+        "3000": { "label": "Client (Next.js)", "onAutoForward": "silent" },
+        "3001": { "label": "Crawler Service", "onAutoForward": "silent" },
+        "3002": { "label": "Indexer Service", "onAutoForward": "silent" },
+        "3003": { "label": "Embedder Service", "onAutoForward": "silent" },
+        "3004": { "label": "Engine Service", "onAutoForward": "silent" },
+        "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+        "6379": { "label": "Redis", "onAutoForward": "silent" }
+    },
+
+    "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+    "remoteEnv": {
+        "DATABASE_URL": "postgresql://devsearch:devsearch@db:5432/devsearch",
+        "REDIS_URL": "redis://redis:6379",
+        "NODE_ENV": "development"
     }
-  },
-
-  "forwardPorts": [3000, 3001, 3002, 3003, 3004, 5432, 6379],
-  "portsAttributes": {
-    "3000": { "label": "Client (Next.js)", "onAutoForward": "notify" },
-    "3001": { "label": "Crawler Service", "onAutoForward": "silent" },
-    "3002": { "label": "Embedder Service", "onAutoForward": "silent" },
-    "3003": { "label": "Engine Service", "onAutoForward": "silent" },
-    "3004": { "label": "Indexer Service", "onAutoForward": "silent" },
-    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
-    "6379": { "label": "Redis", "onAutoForward": "silent" }
-  },
-
-  "postCreateCommand": "bash .devcontainer/post-create.sh",
-
-  "remoteEnv": {
-    "DATABASE_URL": "postgresql://devsearch:devsearch@db:5432/devsearch",
-    "REDIS_URL": "redis://redis:6379",
-    "NODE_ENV": "development"
-  }
 }
