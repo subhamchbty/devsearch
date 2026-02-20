@@ -13,9 +13,6 @@ for service in "${services[@]}"; do
   fi
 done
 
-# Install NestJS CLI globally for backend services
-pnpm add -g @nestjs/cli
-
 echo ""
 echo "✅ DevSearch development environment is ready!"
 echo ""
