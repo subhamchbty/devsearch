@@ -9,7 +9,11 @@ services=("client" "crawler" "embedder" "engine" "indexer")
 for service in "${services[@]}"; do
   if [ -d "$service" ] && [ -f "$service/package.json" ]; then
     echo "📦 Installing dependencies for $service..."
-    (cd "$service" && pnpm install)
+    if [ -f "$service/pnpm-lock.yaml" ]; then
+      (cd "$service" && pnpm install)
+    else
+      (cd "$service" && npm install)
+    fi
   fi
 done
 
@@ -20,11 +24,11 @@ echo ""
 echo "✅ DevSearch development environment is ready!"
 echo ""
 echo "Available services:"
-echo "  Client (Next.js):    cd client  && pnpm dev        → http://localhost:3000"
-echo "  Crawler (NestJS):    cd crawler && pnpm start:dev   → http://localhost:3001"
-echo "  Embedder (NestJS):   cd embedder && pnpm start:dev  → http://localhost:3002"
-echo "  Engine (NestJS):     cd engine && pnpm start:dev    → http://localhost:3003"
-echo "  Indexer (NestJS):    cd indexer && pnpm start:dev   → http://localhost:3004"
+echo "  Client (Next.js):    cd client  && pnpm dev         → http://localhost:3000"
+echo "  Crawler (Express):   cd crawler && npm run dev      → http://localhost:3001"
+echo "  Indexer (Express):    cd indexer && npm run dev     → http://localhost:3002"
+echo "  Embedder (Express):   cd embedder && npm run dev    → http://localhost:3003"
+echo "  Engine (NestJS):     cd engine && pnpm start:dev    → http://localhost:3004"
 echo ""
 echo "Infrastructure:"
 echo "  PostgreSQL (pgvector): localhost:5432  (user: devsearch, pass: devsearch)"
