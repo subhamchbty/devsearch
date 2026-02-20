@@ -24,33 +24,11 @@
                 // Tailwind CSS
                 "bradlc.vscode-tailwindcss",
 
-                // NestJS
-                "ashinzekene.nestjs",
-
-                // Testing
-                "orta.vscode-jest",
-
-                // Docker & Infrastructure
-                "ms-azuretools.vscode-docker",
-
                 // Database
                 "cweijan.vscode-postgresql-client2",
 
-                // REST API testing
-                "humao.rest-client",
-
                 // Git
                 "eamodio.gitlens",
-                "mhutchie.git-graph",
-
-                // DX utilities
-                "usernamehw.errorlens",
-                "christian-kohler.path-intellisense",
-                "mikestead.dotenv",
-                "EditorConfig.EditorConfig",
-
-                // Markdown
-                "yzhang.markdown-all-in-one",
 
                 // GitHub Copilot
                 "GitHub.copilot",
