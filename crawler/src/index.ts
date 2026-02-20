@@ -1,4 +1,6 @@
 import express, { Express, Request, Response } from "express";
+import "reflect-metadata";
+import dataSource from "./config/dataSource";
 
 const app: Express = express();
 const PORT = process.env.PORT || 3001;
@@ -9,8 +11,16 @@ app.get("/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "devsearch-crawler" });
 });
 
-app.listen(PORT, () => {
-    console.log(`Crawler service running on http://localhost:${PORT}`);
-});
+dataSource
+    .initialize()
+    .then(() => {
+        console.log("Connected to the database");
+        app.listen(PORT, () => {
+            console.log(`Crawler service running on http://localhost:${PORT}`);
+        });
+    })
+    .catch((err: Error) => {
+        console.error("Failed to connect to the database", err);
+    });
 
 export default app;
