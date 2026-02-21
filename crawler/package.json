@@ -15,6 +15,7 @@
     "author": "Subham Chakraborty",
     "license": "MIT",
     "dependencies": {
+        "cheerio": "^1.2.0",
         "express": "^5.2.1",
         "pg": "^8.18.0",
         "reflect-metadata": "^0.2.2",
