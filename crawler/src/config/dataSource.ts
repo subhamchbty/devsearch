@@ -1,4 +1,5 @@
 import { DataSource } from "typeorm";
+import { DocumentPage } from "../entities/document-page.entity";
 import { Document } from "../entities/document.entity";
 
 const dataSource = new DataSource({
@@ -8,7 +9,7 @@ const dataSource = new DataSource({
     username: process.env.CRAWLER_DB_USERNAME || "devsearch",
     password: process.env.CRAWLER_DB_PASSWORD || "devsearch",
     database: process.env.CRAWLER_DB_NAME || "devsearch",
-    entities: [Document],
+    entities: [Document, DocumentPage],
     synchronize: true,
 });
 

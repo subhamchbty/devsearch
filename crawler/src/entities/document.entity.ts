@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { DocumentPage } from "./document-page.entity";
 
 enum DocumentationType {
     LANGUAGE = "language",
@@ -23,4 +24,10 @@ export class Document {
 
     @Column({ type: "varchar", length: 255 })
     baseUrl: string;
+
+    @Column({ type: "varchar", length: 255 })
+    documentationUrl: string;
+
+    @OneToMany(() => DocumentPage, (page: DocumentPage) => page.document)
+    pages: DocumentPage[];
 }

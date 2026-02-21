@@ -3,7 +3,8 @@ import dataSource from "../config/dataSource";
 import { Document } from "../entities/document.entity";
 
 const addNewDocument = async (req: Request, res: Response) => {
-    const { documentationOf, version, type, baseUrl } = req.body;
+    const { documentationOf, version, type, baseUrl, documentationUrl } =
+        req.body;
 
     const documentRepo = dataSource.getRepository(Document);
 
@@ -13,6 +14,7 @@ const addNewDocument = async (req: Request, res: Response) => {
             version,
             type,
             baseUrl,
+            documentationUrl,
         });
 
         await documentRepo.save(newDocument);
