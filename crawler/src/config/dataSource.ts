@@ -1,5 +1,5 @@
 import { DataSource } from "typeorm";
-import { Document } from "../entities/doc.entity";
+import { Document } from "../entities/document.entity";
 
 const dataSource = new DataSource({
     type: (process.env.CRAWLER_DB_DRIVER as any) || "postgres",

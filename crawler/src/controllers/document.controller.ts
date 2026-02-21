@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import { Request, Response } from "express";
 import * as fs from "fs";
 import dataSource from "../config/dataSource";
-import { Document } from "../entities/doc.entity";
+import { Document } from "../entities/document.entity";
 
 const triggerCrawl = async (_req: Request, res: Response) => {
     const crawlUrl = "https://laravel.com/docs/12.x";
@@ -98,4 +98,16 @@ const addNewDocument = async (req: Request, res: Response) => {
     }
 };
 
-export { addNewDocument, triggerCrawl };
+const getDocuments = async (_req: Request, res: Response) => {
+    const documentRepo = dataSource.getRepository(Document);
+
+    try {
+        const documents = await documentRepo.find();
+        res.json({ documents });
+    } catch (error) {
+        console.error("Error fetching documents:", error);
+        res.status(500).json({ message: "Failed to fetch documents" });
+    }
+};
+
+export { addNewDocument, getDocuments, triggerCrawl };

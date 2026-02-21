@@ -1,8 +1,8 @@
 import express, { Router } from "express";
-import crawlerRouter from "./crawler.route";
+import documentRouter from "./document.route";
 
 const router: Router = express.Router();
 
-router.use("/crawl", crawlerRouter);
+router.use("/documents", documentRouter);
 
 export default router;
