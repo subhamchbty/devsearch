@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from "express";
 import "reflect-metadata";
 import dataSource from "./config/dataSource";
+import { connectRedis } from "./config/redis";
 import router from "./routes";
 
 const app: Express = express();
@@ -15,8 +16,9 @@ app.get("/health", (_req: Request, res: Response) => {
 
 dataSource
     .initialize()
-    .then(() => {
+    .then(async () => {
         console.log("Connected to the database");
+        await connectRedis();
         app.listen(PORT, () => {
             console.log(`Crawler service running on http://localhost:${PORT}`);
         });

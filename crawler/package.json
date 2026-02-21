@@ -15,8 +15,10 @@
     "author": "Subham Chakraborty",
     "license": "MIT",
     "dependencies": {
+        "bullmq": "^5.69.4",
         "cheerio": "^1.2.0",
         "express": "^5.2.1",
+        "ioredis": "5.9.2",
         "pg": "^8.18.0",
         "reflect-metadata": "^0.2.2",
         "typeorm": "^0.3.28"
