@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from "express";
 import "reflect-metadata";
 import dataSource from "./config/dataSource";
 import { connectRedis } from "./config/redis";
+import { bootQueue } from "./queue";
 import router from "./routes";
 
 const app: Express = express();
@@ -19,6 +20,10 @@ dataSource
     .then(async () => {
         console.log("Connected to the database");
         await connectRedis();
+
+        // Boot the queue system — register jobs & start workers
+        bootQueue({ queues: ["default"], concurrency: 2 });
+
         app.listen(PORT, () => {
             console.log(`Crawler service running on http://localhost:${PORT}`);
         });
