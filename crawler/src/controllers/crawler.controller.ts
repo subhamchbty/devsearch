@@ -37,13 +37,13 @@ const triggerCrawl = async (_req: Request, res: Response) => {
 
     // save to a file for debugging
     // await fs.promises.writeFile(
-    //     "crawled_laravel_page.html",
+    //     "tmp/crawled_laravel_page.html",
     //     html || "",
     //     "utf-8",
     // );
 
     const html = await fs.promises.readFile(
-        "crawled_laravel_page.html",
+        "tmp/crawled_laravel_page.html",
         "utf-8",
     );
 

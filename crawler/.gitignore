@@ -20,3 +20,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Tmp directory contents (keep directory, ignore files)
+tmp/*
+!tmp/.gitkeep
