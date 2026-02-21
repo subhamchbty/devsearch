@@ -25,17 +25,30 @@ export class CrawlPageJob extends Job<CrawlPagePayload> {
 
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(
-                `Failed to fetch ${url}: ${response.statusText}`,
-            );
+            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
         }
 
         const html = await response.text();
-        console.log(
-            `[CrawlPageJob] Downloaded ${url} (${html.length} chars)`,
-        );
+        console.log(`[CrawlPageJob] Downloaded ${url} (${html.length} chars)`);
 
-        // TODO: Parse links, store content, dispatch child jobs, etc.
+        // const $ = cheerio.load(html);
+
+        // const contents = {
+        //     framework: "Laravel",
+        //     version: "12.x",
+        //     url: url,
+        //     sections: [] as string[],
+        // };
+
+        // $("a").each((i, elem) => {
+        //     let urls = $(elem).attr("href") || "";
+        //     if (urls.startsWith("/")) {
+        //         urls = contents.url + urls;
+        //     }
+        //     if (urls.startsWith(contents.url)) {
+        //         contents.sections.push(urls);
+        //     }
+        // });
     }
 
     // ── Failed hook ─────────────────────────────────────────────────
