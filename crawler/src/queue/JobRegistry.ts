@@ -5,8 +5,8 @@ import { Job } from "./Job";
  *
  * Laravel equivalent: the job class resolution via the IoC container.
  *
- * When you register `CrawlPageJob`, the worker knows how to resolve
- * the class name "CrawlPageJob" that comes off the queue back into
+ * When you register `CrawlDocumentJob`, the worker knows how to resolve
+ * the class name "CrawlDocumentJob" that comes off the queue back into
  * an actual class instance so it can call `handle()`.
  */
 
@@ -18,7 +18,7 @@ const registry = new Map<string, JobConstructor>();
  * Register one or more job classes so the worker can resolve them.
  *
  * ```ts
- * registerJobs(CrawlPageJob, ProcessDocumentJob);
+ * registerJobs(CrawlDocumentJob, ProcessDocumentJob);
  * ```
  */
 export function registerJobs(...jobs: JobConstructor[]): void {

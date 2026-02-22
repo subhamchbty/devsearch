@@ -1,1 +1,1 @@
-export { CrawlPageJob } from "./CrawlPageJob";
+export { CrawlDocumentJob } from "./CrawlDocumentJob";

@@ -3,7 +3,7 @@ import dataSource from "../../config/dataSource";
 import { Document, DocumentPage } from "../../entities";
 import { Job } from "../Job";
 
-interface CrawlPagePayload {
+interface CrawlDocumentPayload {
     document: Document;
     depth?: number;
 }
@@ -15,13 +15,13 @@ interface CrawledPage {
 }
 
 /**
- * Example job: Crawls a single page.
+ * Example job: Crawls a document.
  *
  * Usage:
- *   await CrawlPageJob.dispatch({ documentId: "123" });
- *   await CrawlPageJob.dispatch({ documentId: "123", depth: 2 }, { delay: 5000 });
+ *   await CrawlDocumentJob.dispatch({ documentId: "123" });
+ *   await CrawlDocumentJob.dispatch({ documentId: "123", depth: 2 }, { delay: 5000 });
  */
-export class CrawlPageJob extends Job<CrawlPagePayload> {
+export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
     // ── Configuration ───────────────────────────────────────────────
     static override queueName = "default";
     static override attempts = 3;
@@ -30,8 +30,21 @@ export class CrawlPageJob extends Job<CrawlPagePayload> {
     // ── Handler ─────────────────────────────────────────────────────
     async handle(): Promise<void> {
         const { document, depth } = this.data;
+
+        // Re-check the cooldown from the DB (in case the job was queued before the check)
+        const freshDocument = await dataSource
+            .getRepository(Document)
+            .findOneBy({ id: document.id });
+
+        if (freshDocument && !freshDocument.canCrawl()) {
+            console.log(
+                `[CrawlDocumentJob] Skipping document ${document.id} — last crawled ${freshDocument.hoursSinceLastCrawl()!.toFixed(1)}h ago`,
+            );
+            return;
+        }
+
         console.log(
-            `[CrawlPageJob] Crawling document ${document.id} (depth: ${depth ?? 0})`,
+            `[CrawlDocumentJob] Crawling document ${document.id} (depth: ${depth ?? 0})`,
         );
 
         const response = await fetch(document.documentationUrl);
@@ -43,7 +56,7 @@ export class CrawlPageJob extends Job<CrawlPagePayload> {
 
         const html = await response.text();
         console.log(
-            `[CrawlPageJob] Downloaded ${document.documentationUrl} (${html.length} chars)`,
+            `[CrawlDocumentJob] Downloaded ${document.documentationUrl} (${html.length} chars)`,
         );
 
         const $ = cheerio.load(html);
@@ -73,15 +86,20 @@ export class CrawlPageJob extends Job<CrawlPagePayload> {
             conflictPaths: ["url"],
             skipUpdateIfNoValuesChanged: true,
         });
+
+        await dataSource.getRepository(Document).update(document.id, {
+            lastCrawledAt: new Date(),
+        });
+
         console.log(
-            `[CrawlPageJob] Extracted ${pages.length} pages from ${document.documentationUrl}`,
+            `[CrawlDocumentJob] Extracted ${pages.length} pages from ${document.documentationUrl}`,
         );
     }
 
     // ── Failed hook ─────────────────────────────────────────────────
     async failed(error: Error): Promise<void> {
         console.error(
-            `[CrawlPageJob] Permanently failed for document ${this.data.document.id}: ${error.message}`,
+            `[CrawlDocumentJob] Permanently failed for document ${this.data.document.id}: ${error.message}`,
         );
         // TODO: Send notification, log to DB, etc.
     }

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import dataSource from "../config/dataSource";
 import { Document } from "../entities";
-import { CrawlPageJob } from "../queue";
+import { CrawlDocumentJob } from "../queue";
 
 const triggerCrawl = async (req: Request, res: Response) => {
     const { documentId } = req.params;
@@ -23,13 +23,22 @@ const triggerCrawl = async (req: Request, res: Response) => {
         return;
     }
 
+    // Prevent re-crawling if cooldown period has not elapsed
+    if (!document.canCrawl()) {
+        res.status(429).json({
+            message: `Document was crawled ${document.hoursSinceLastCrawl()!.toFixed(1)} hours ago. Please wait ${Document.CRAWL_COOLDOWN_HOURS} hours between crawls.`,
+            lastCrawledAt: document.lastCrawledAt,
+        });
+        return;
+    }
+
     // Dispatch the job — it will be processed by the worker in the background
-    const job = await CrawlPageJob.dispatch({ document });
+    const job = await CrawlDocumentJob.dispatch({ document });
 
     res.json({
         message: "Crawl job dispatched",
         jobId: job.id,
-        queue: CrawlPageJob.queueName,
+        queue: CrawlDocumentJob.queueName,
     });
 };
 
