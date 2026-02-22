@@ -27,51 +27,65 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
     static override attempts = 3;
     static override backoff = { type: "exponential" as const, delay: 2000 };
 
+    private get tag(): string {
+        return `[CrawlDocumentJob][doc:${this.data.document.id}]`;
+    }
+
     // ── Handler ─────────────────────────────────────────────────────
     async handle(): Promise<void> {
-        const { document, depth } = this.data;
+        const { document } = this.data;
 
-        // Re-check the cooldown from the DB (in case the job was queued before the check)
+        if (await this.isCooldownActive(document.id)) return;
+
+        const html = await this.fetchPage(document.documentationUrl);
+        const pages = this.extractPages(html, document);
+
+        await this.persistPages(pages);
+        await this.markDocumentCrawled(document.id);
+
+        console.log(`${this.tag} Extracted ${pages.length} pages`);
+    }
+
+    // ── Private helpers ─────────────────────────────────────────────
+
+    /** Re-check the cooldown from the DB in case the job was queued before the controller check. */
+    private async isCooldownActive(documentId: number): Promise<boolean> {
         const freshDocument = await dataSource
             .getRepository(Document)
-            .findOneBy({ id: document.id });
+            .findOneBy({ id: documentId });
 
         if (freshDocument && !freshDocument.canCrawl()) {
             console.log(
-                `[CrawlDocumentJob] Skipping document ${document.id} — last crawled ${freshDocument.hoursSinceLastCrawl()!.toFixed(1)}h ago`,
+                `${this.tag} Skipping — last crawled ${freshDocument.hoursSinceLastCrawl()!.toFixed(1)}h ago`,
             );
-            return;
+            return true;
         }
+        return false;
+    }
 
-        console.log(
-            `[CrawlDocumentJob] Crawling document ${document.id} (depth: ${depth ?? 0})`,
-        );
-
-        const response = await fetch(document.documentationUrl);
+    /** Fetch the HTML content of a URL. */
+    private async fetchPage(url: string): Promise<string> {
+        console.log(`${this.tag} Fetching ${url}`);
+        const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(
-                `Failed to fetch ${document.documentationUrl}: ${response.statusText}`,
-            );
+            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
         }
-
         const html = await response.text();
-        console.log(
-            `[CrawlDocumentJob] Downloaded ${document.documentationUrl} (${html.length} chars)`,
-        );
+        console.log(`${this.tag} Downloaded ${url} (${html.length} chars)`);
+        return html;
+    }
 
+    /** Parse HTML and extract all in-scope links as crawled pages. */
+    private extractPages(html: string, document: Document): CrawledPage[] {
         const $ = cheerio.load(html);
-
         const pages: CrawledPage[] = [];
 
-        $("a").each((i, elem) => {
+        $("a").each((_i, elem) => {
             let url = $(elem).attr("href") || "";
             if (url.startsWith("/")) {
                 url = document.documentationUrl + url;
             }
-
-            if (!url.startsWith(document.baseUrl)) {
-                return;
-            }
+            if (!url.startsWith(document.baseUrl)) return;
 
             pages.push({
                 url,
@@ -80,27 +94,27 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
             });
         });
 
-        const uniquePages = [...new Map(pages.map((p) => [p.url, p])).values()];
+        return [...new Map(pages.map((p) => [p.url, p])).values()];
+    }
 
-        await dataSource.getRepository(DocumentPage).upsert(uniquePages, {
+    /** Upsert discovered pages into the database. */
+    private async persistPages(pages: CrawledPage[]): Promise<void> {
+        await dataSource.getRepository(DocumentPage).upsert(pages, {
             conflictPaths: ["url"],
             skipUpdateIfNoValuesChanged: true,
         });
+    }
 
-        await dataSource.getRepository(Document).update(document.id, {
+    /** Update the document's lastCrawledAt timestamp. */
+    private async markDocumentCrawled(documentId: number): Promise<void> {
+        await dataSource.getRepository(Document).update(documentId, {
             lastCrawledAt: new Date(),
         });
-
-        console.log(
-            `[CrawlDocumentJob] Extracted ${pages.length} pages from ${document.documentationUrl}`,
-        );
     }
 
     // ── Failed hook ─────────────────────────────────────────────────
     async failed(error: Error): Promise<void> {
-        console.error(
-            `[CrawlDocumentJob] Permanently failed for document ${this.data.document.id}: ${error.message}`,
-        );
+        console.error(`${this.tag} Permanently failed: ${error.message}`);
         // TODO: Send notification, log to DB, etc.
     }
 }
