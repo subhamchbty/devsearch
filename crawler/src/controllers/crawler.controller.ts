@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
+import path from "path";
+import { Worker } from "worker_threads";
 import dataSource from "../config/dataSource";
-import { Document } from "../entities";
-import { CrawlDocumentJob } from "../queue";
+import { Document, DocumentPage } from "../entities";
+import { CrawlDocumentJob, CrawlDocumentPageJob } from "../queue";
+
+const DELAY_BETWEEN_DISPATCHES_MS = 2 * 60 * 1000; // 2 minutes
+const DISPATCH_BATCH_SIZE = 100;
 
 const triggerCrawl = async (req: Request, res: Response) => {
     const { documentId } = req.params;
@@ -43,4 +48,64 @@ const triggerCrawl = async (req: Request, res: Response) => {
     });
 };
 
-export { triggerCrawl };
+const triggerPageCrawl = async (_req: Request, res: Response) => {
+    // Find all pages across all documents that are eligible for crawling
+    const cooldownThreshold = new Date(
+        Date.now() - DocumentPage.CRAWL_COOLDOWN_HOURS * 60 * 60 * 1000,
+    );
+
+    const pageCount = await dataSource
+        .getRepository(DocumentPage)
+        .createQueryBuilder("page")
+        .where(
+            "(page.lastCrawledAt IS NULL OR page.lastCrawledAt < :threshold)",
+            { threshold: cooldownThreshold },
+        )
+        .getCount();
+
+    if (pageCount === 0) {
+        res.json({
+            message: "No pages eligible for crawling",
+            dispatched: 0,
+        });
+        return;
+    }
+
+    // Spawn a worker thread to handle dispatching in the background
+    const workerFile = __filename.endsWith(".ts")
+        ? "dispatchPageCrawls.worker.ts"
+        : "dispatchPageCrawls.worker.js";
+    const workerPath = path.resolve(__dirname, "../workers", workerFile);
+
+    const worker = new Worker(workerPath, {
+        workerData: {
+            cooldownHours: Document.CRAWL_COOLDOWN_HOURS,
+            delayBetweenMs: DELAY_BETWEEN_DISPATCHES_MS,
+            batchSize: DISPATCH_BATCH_SIZE,
+        },
+        // Register ts-node so the worker can execute .ts files directly
+        ...(workerFile.endsWith(".ts") && {
+            execArgv: ["--require", "ts-node/register"],
+        }),
+    });
+
+    worker.on("message", (msg) => {
+        console.log(
+            `[triggerPageCrawl] Worker finished: dispatched ${msg.dispatched} jobs (success: ${msg.success})`,
+        );
+    });
+
+    worker.on("error", (err) => {
+        console.error("[triggerPageCrawl] Worker error:", err);
+    });
+
+    // Respond immediately
+    res.json({
+        message: `Dispatching ${pageCount} page crawl jobs in a background worker`,
+        eligible: pageCount,
+        delayBetweenMs: DELAY_BETWEEN_DISPATCHES_MS,
+        queue: CrawlDocumentPageJob.queueName,
+    });
+};
+
+export { triggerCrawl, triggerPageCrawl };

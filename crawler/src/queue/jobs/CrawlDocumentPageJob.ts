@@ -3,59 +3,56 @@ import dataSource from "../../config/dataSource";
 import { Document, DocumentPage } from "../../entities";
 import { Job } from "../Job";
 
-interface CrawlDocumentPayload {
-    document: Document;
-    depth?: number;
-}
-
-interface CrawledPage {
-    url: string;
+interface CrawlDocumentPagePayload {
+    page: DocumentPage;
     document: Document;
 }
 
 /**
- * Example job: Crawls a document.
+ * Crawls an individual DocumentPage and
+ * discovers further in-scope pages that are persisted to the database.
  *
  * Usage:
- *   await CrawlDocumentJob.dispatch({ documentId: "123" });
- *   await CrawlDocumentJob.dispatch({ documentId: "123", depth: 2 }, { delay: 5000 });
+ *   await CrawlDocumentPageJob.dispatch({ page, document });
  */
-export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
+export class CrawlDocumentPageJob extends Job<CrawlDocumentPagePayload> {
     // ── Configuration ───────────────────────────────────────────────
     static override queueName = "default";
     static override attempts = 3;
     static override backoff = { type: "exponential" as const, delay: 2000 };
 
     private get tag(): string {
-        return `[CrawlDocumentJob][doc:${this.data.document.id}]`;
+        return `[CrawlDocumentPageJob][page:${this.data.page.id}]`;
     }
 
     // ── Handler ─────────────────────────────────────────────────────
     async handle(): Promise<void> {
-        const { document } = this.data;
+        const { page, document } = this.data;
 
-        if (await this.isCooldownActive(document.id)) return;
+        if (await this.isCooldownActive(page.id)) return;
 
-        const html = await this.fetchPage(document.documentationUrl);
-        const pages = this.extractPages(html, document);
+        const html = await this.fetchPage(page.url);
+        const discoveredPages = this.extractPages(html, document);
 
-        await this.persistPages(pages);
-        await this.markDocumentCrawled(document.id);
+        await this.markPageCrawled(page.id);
+        await this.persistDiscoveredPages(discoveredPages);
 
-        console.log(`${this.tag} Extracted ${pages.length} pages`);
+        console.log(
+            `${this.tag} Discovered ${discoveredPages.length} further pages from ${page.url}`,
+        );
     }
 
     // ── Private helpers ─────────────────────────────────────────────
 
-    /** Re-check the cooldown from the DB in case the job was queued before the controller check. */
-    private async isCooldownActive(documentId: number): Promise<boolean> {
-        const freshDocument = await dataSource
-            .getRepository(Document)
-            .findOneBy({ id: documentId });
+    /** Re-check the cooldown from the DB in case the job was queued before the check. */
+    private async isCooldownActive(pageId: number): Promise<boolean> {
+        const freshPage = await dataSource
+            .getRepository(DocumentPage)
+            .findOneBy({ id: pageId });
 
-        if (freshDocument && !freshDocument.canCrawl()) {
+        if (freshPage && !freshPage.canCrawl()) {
             console.log(
-                `${this.tag} Skipping — last crawled ${freshDocument.hoursSinceLastCrawl()!.toFixed(1)}h ago`,
+                `${this.tag} Skipping — last crawled ${freshPage.hoursSinceLastCrawl()!.toFixed(1)}h ago`,
             );
             return true;
         }
@@ -74,20 +71,28 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
         return html;
     }
 
-    /** Parse HTML and extract all in-scope links as crawled pages. */
-    private extractPages(html: string, document: Document): CrawledPage[] {
+    /** Parse HTML and extract all in-scope links as new pages. */
+    private extractPages(
+        html: string,
+        document: Document,
+    ): { url: string; lastCrawledAt: Date; document: Document }[] {
         const $ = cheerio.load(html);
-        const pages: CrawledPage[] = [];
+        const pages: {
+            url: string;
+            lastCrawledAt: Date;
+            document: Document;
+        }[] = [];
 
         $("a").each((_i, elem) => {
             let url = $(elem).attr("href") || "";
             if (url.startsWith("/")) {
-                url = document.documentationUrl + url;
+                url = document.baseUrl + url;
             }
             if (!url.startsWith(document.baseUrl)) return;
 
             pages.push({
                 url,
+                lastCrawledAt: new Date(),
                 document: { id: document.id } as Document,
             });
         });
@@ -95,24 +100,26 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
         return [...new Map(pages.map((p) => [p.url, p])).values()];
     }
 
-    /** Upsert discovered pages into the database. */
-    private async persistPages(pages: CrawledPage[]): Promise<void> {
+    /** Update the page's lastCrawledAt timestamp. */
+    private async markPageCrawled(pageId: number): Promise<void> {
+        await dataSource.getRepository(DocumentPage).update(pageId, {
+            lastCrawledAt: new Date(),
+        });
+    }
+
+    /** Upsert any newly discovered pages into the database. */
+    private async persistDiscoveredPages(
+        pages: { url: string; lastCrawledAt: Date; document: Document }[],
+    ): Promise<void> {
+        if (pages.length === 0) return;
         await dataSource.getRepository(DocumentPage).upsert(pages, {
             conflictPaths: ["url"],
             skipUpdateIfNoValuesChanged: true,
         });
     }
 
-    /** Update the document's lastCrawledAt timestamp. */
-    private async markDocumentCrawled(documentId: number): Promise<void> {
-        await dataSource.getRepository(Document).update(documentId, {
-            lastCrawledAt: new Date(),
-        });
-    }
-
     // ── Failed hook ─────────────────────────────────────────────────
     async failed(error: Error): Promise<void> {
         console.error(`${this.tag} Permanently failed: ${error.message}`);
-        // TODO: Send notification, log to DB, etc.
     }
 }
