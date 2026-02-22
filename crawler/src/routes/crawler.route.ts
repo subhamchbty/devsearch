@@ -3,6 +3,6 @@ import { crawlerController } from "../controllers";
 
 const router: Router = express.Router();
 
-router.get("/trigger-crawl", crawlerController.triggerCrawl);
+router.get("/:documentId/trigger-crawl", crawlerController.triggerCrawl);
 
 export default router;
