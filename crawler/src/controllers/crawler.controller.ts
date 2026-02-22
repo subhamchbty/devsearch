@@ -16,6 +16,7 @@ const triggerCrawl = async (req: Request, res: Response) => {
     const document = await dataSource
         .getRepository(Document)
         .findOneBy({ id: Number(documentId) });
+
     if (!document) {
         res.status(404).json({
             message: `Document with ID ${documentId} not found`,
