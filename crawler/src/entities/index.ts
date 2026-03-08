@@ -1,2 +1,2 @@
 export { DocumentPage } from "./document-page.entity";
-export { Document } from "./document.entity";
+export { Document, DocumentationType } from "./document.entity";

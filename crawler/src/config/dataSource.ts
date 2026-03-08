@@ -1,3 +1,4 @@
+import path from "path";
 import { DataSource } from "typeorm";
 import { DocumentPage } from "../entities/document-page.entity";
 import { Document } from "../entities/document.entity";
@@ -10,7 +11,8 @@ const dataSource = new DataSource({
     password: process.env.CRAWLER_DB_PASSWORD || "devsearch",
     database: process.env.CRAWLER_DB_NAME || "devsearch",
     entities: [Document, DocumentPage],
-    synchronize: true,
+    synchronize: false,
+    migrations: [path.join(__dirname, "../migrations/*.{ts,js}")],
 });
 
 export default dataSource;

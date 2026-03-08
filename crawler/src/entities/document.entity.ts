@@ -1,7 +1,8 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { DocumentPage } from "./document-page.entity";
+import { Crawlable } from "./mixins/crawlable.mixin";
 
-enum DocumentationType {
+export enum DocumentationType {
     LANGUAGE = "language",
     FRAMEWORK = "framework",
     LIBRARY = "library",
@@ -9,7 +10,7 @@ enum DocumentationType {
 }
 
 @Entity("documents")
-export class Document {
+export class Document extends Crawlable {
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -28,32 +29,8 @@ export class Document {
     @Column({ type: "varchar", length: 255 })
     documentationUrl: string;
 
-    @Column({ type: "timestamp", nullable: true })
-    lastCrawledAt: Date | null;
-
     @OneToMany(() => DocumentPage, (page: DocumentPage) => page.document)
     pages: DocumentPage[];
 
-    static CRAWL_COOLDOWN_HOURS = 24;
-
-    /**
-     * Returns the number of hours since the document was last crawled,
-     * or `null` if it has never been crawled.
-     */
-    hoursSinceLastCrawl(): number | null {
-        if (!this.lastCrawledAt) return null;
-        return (
-            (Date.now() - new Date(this.lastCrawledAt).getTime()) /
-            (1000 * 60 * 60)
-        );
-    }
-
-    /**
-     * Returns `true` if the document can be crawled (never crawled or
-     * cooldown period has elapsed).
-     */
-    canCrawl(): boolean {
-        const hours = this.hoursSinceLastCrawl();
-        return hours === null || hours >= Document.CRAWL_COOLDOWN_HOURS;
-    }
+    static override CRAWL_COOLDOWN_HOURS = 24;
 }

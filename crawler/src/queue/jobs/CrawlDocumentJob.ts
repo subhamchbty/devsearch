@@ -4,21 +4,22 @@ import { Document, DocumentPage } from "../../entities";
 import { Job } from "../Job";
 
 interface CrawlDocumentPayload {
-    document: Document;
+    documentId: number;
     depth?: number;
 }
 
 interface CrawledPage {
     url: string;
-    document: Document;
+    document: { id: number };
 }
 
 /**
- * Example job: Crawls a document.
+ * Crawls a documentation source by fetching the documentation URL,
+ * extracting all in-scope page links, and persisting them to the database.
  *
  * Usage:
- *   await CrawlDocumentJob.dispatch({ documentId: "123" });
- *   await CrawlDocumentJob.dispatch({ documentId: "123", depth: 2 }, { delay: 5000 });
+ *   await CrawlDocumentJob.dispatch({ documentId: 123 });
+ *   await CrawlDocumentJob.dispatch({ documentId: 123, depth: 2 }, { delay: 5000 });
  */
 export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
     // ── Configuration ───────────────────────────────────────────────
@@ -27,40 +28,38 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
     static override backoff = { type: "exponential" as const, delay: 2000 };
 
     private get tag(): string {
-        return `[CrawlDocumentJob][doc:${this.data.document.id}]`;
+        return `[CrawlDocumentJob][doc:${this.data.documentId}]`;
     }
 
     // ── Handler ─────────────────────────────────────────────────────
     async handle(): Promise<void> {
-        const { document } = this.data;
+        const { documentId } = this.data;
 
-        if (await this.isCooldownActive(document.id)) return;
+        const document = await dataSource
+            .getRepository(Document)
+            .findOneBy({ id: documentId });
+
+        if (!document) {
+            throw new Error(`Document with ID ${documentId} not found`);
+        }
+
+        if (!document.canCrawl()) {
+            console.log(
+                `${this.tag} Skipping — last crawled ${document.hoursSinceLastCrawl()!.toFixed(1)}h ago`,
+            );
+            return;
+        }
 
         const html = await this.fetchPage(document.documentationUrl);
         const pages = this.extractPages(html, document);
 
         await this.persistPages(pages);
-        await this.markDocumentCrawled(document.id);
+        await this.markDocumentCrawled(documentId);
 
         console.log(`${this.tag} Extracted ${pages.length} pages`);
     }
 
     // ── Private helpers ─────────────────────────────────────────────
-
-    /** Re-check the cooldown from the DB in case the job was queued before the controller check. */
-    private async isCooldownActive(documentId: number): Promise<boolean> {
-        const freshDocument = await dataSource
-            .getRepository(Document)
-            .findOneBy({ id: documentId });
-
-        if (freshDocument && !freshDocument.canCrawl()) {
-            console.log(
-                `${this.tag} Skipping — last crawled ${freshDocument.hoursSinceLastCrawl()!.toFixed(1)}h ago`,
-            );
-            return true;
-        }
-        return false;
-    }
 
     /** Fetch the HTML content of a URL. */
     private async fetchPage(url: string): Promise<string> {
@@ -80,15 +79,21 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
         const pages: CrawledPage[] = [];
 
         $("a").each((_i, elem) => {
-            let url = $(elem).attr("href") || "";
-            if (url.startsWith("/")) {
-                url = document.documentationUrl + url;
+            const href = $(elem).attr("href") || "";
+            if (!href) return;
+
+            let resolvedUrl: string;
+            try {
+                resolvedUrl = new URL(href, document.baseUrl).href;
+            } catch {
+                return;
             }
-            if (!url.startsWith(document.baseUrl)) return;
+
+            if (!resolvedUrl.startsWith(document.baseUrl)) return;
 
             pages.push({
-                url,
-                document: { id: document.id } as Document,
+                url: resolvedUrl,
+                document: { id: document.id },
             });
         });
 
@@ -97,6 +102,7 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
 
     /** Upsert discovered pages into the database. */
     private async persistPages(pages: CrawledPage[]): Promise<void> {
+        if (pages.length === 0) return;
         await dataSource.getRepository(DocumentPage).upsert(pages, {
             conflictPaths: ["url"],
             skipUpdateIfNoValuesChanged: true,

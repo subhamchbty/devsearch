@@ -31,7 +31,6 @@ async function run() {
         const pages = await dataSource
             .getRepository(DocumentPage)
             .createQueryBuilder("page")
-            .leftJoinAndSelect("page.document", "document")
             .where(
                 "(page.lastCrawledAt IS NULL OR page.lastCrawledAt < :threshold)",
                 { threshold: cooldownThreshold },
@@ -44,8 +43,7 @@ async function run() {
 
         for (const page of pages) {
             await CrawlDocumentPageJob.dispatch({
-                page,
-                document: page.document,
+                pageId: page.id,
             });
             totalDispatched++;
 

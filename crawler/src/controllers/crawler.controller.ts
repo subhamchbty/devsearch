@@ -39,7 +39,7 @@ const triggerCrawl = async (req: Request, res: Response) => {
     }
 
     // Dispatch the job — it will be processed by the worker in the background
-    const job = await CrawlDocumentJob.dispatch({ document });
+    const job = await CrawlDocumentJob.dispatch({ documentId: document.id });
 
     res.json({
         message: "Crawl job dispatched",
