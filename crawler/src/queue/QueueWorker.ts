@@ -58,7 +58,9 @@ export class QueueWorker {
             console.error(
                 `[QueueWorker] ✗ ${job?.name}#${job?.id} failed on "${this.queueName}": ${err.message}`,
             );
-            this.handleFailedJob(job, err);
+            void this.handleFailedJob(job, err).catch(e =>
+                console.error(`[QueueWorker] handleFailedJob threw:`, e)
+            );
         });
 
         this.worker.on("error", (err: Error) => {
@@ -104,6 +106,9 @@ export class QueueWorker {
         error: Error,
     ): Promise<void> {
         if (!bullJob) return;
+
+        // Only invoke the failed() hook once all retries are exhausted
+        if (bullJob.attemptsMade < (bullJob.opts.attempts ?? 1)) return;
 
         const JobClass = resolveJob(bullJob.name);
         if (!JobClass) return;

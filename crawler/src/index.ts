@@ -1,9 +1,10 @@
+import "dotenv/config";
 import express, { Express, Request, Response } from "express";
 import http from "http";
 import "reflect-metadata";
 import dataSource from "./config/dataSource";
 import { connectRedis } from "./config/redis";
-import { bootQueue, QueueWorker } from "./queue";
+import { bootQueue, QueueManager, QueueWorker } from "./queue";
 import router from "./routes";
 
 const app: Express = express();
@@ -47,6 +48,9 @@ dataSource
                     await worker.stop();
                 }
                 console.log("[shutdown] All queue workers stopped");
+
+                await QueueManager.getInstance().closeAll();
+                console.log("[shutdown] All queue connections closed");
 
                 await dataSource.destroy();
                 console.log("[shutdown] Database connection closed");

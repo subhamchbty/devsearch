@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { parentPort, workerData } from "worker_threads";
 import dataSource from "../config/dataSource";
-import { connectRedis } from "../config/redis";
+import redisConnection, { connectRedis } from "../config/redis";
 import { DocumentPage } from "../entities/document-page.entity";
 import { CrawlDocumentPageJob } from "../queue/jobs/CrawlDocumentPageJob";
 
@@ -55,6 +55,7 @@ async function run() {
     }
 
     await dataSource.destroy();
+    await redisConnection.quit();
 
     parentPort?.postMessage({
         success: true,

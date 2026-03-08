@@ -8,7 +8,7 @@
         "start": "node dist/index.js",
         "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
-        "migration:run": "ts-node -e \"require('reflect-metadata'); const { default: ds } = require('./src/config/dataSource'); ds.initialize().then(() => ds.runMigrations()).then(() => { console.log('Migrations complete'); process.exit(0); }).catch(e => { console.error(e); process.exit(1); })\"",
+        "migration:run": "ts-node --transpile-only -e \"require('dotenv').config(); require('reflect-metadata'); const { default: ds } = require('./src/config/dataSource'); ds.initialize().then(() => ds.runMigrations()).then(() => { console.log('Migrations complete'); process.exit(0); }).catch(e => { console.error(e); process.exit(1); })\"",
         "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/config/dataSource.ts"
     },
     "keywords": [
@@ -19,6 +19,7 @@
     "dependencies": {
         "bullmq": "^5.69.4",
         "cheerio": "^1.2.0",
+        "dotenv": "^17.3.1",
         "express": "^5.2.1",
         "ioredis": "5.9.2",
         "pg": "^8.18.0",

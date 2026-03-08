@@ -20,6 +20,7 @@ const addNewDocument = async (req: Request, res: Response) => {
 
     const missingFields: string[] = [];
     if (!documentationOf) missingFields.push("documentationOf");
+    if (!version) missingFields.push("version");
     if (!documentationUrl) missingFields.push("documentationUrl");
     if (!baseUrl) missingFields.push("baseUrl");
     if (!type) missingFields.push("type");

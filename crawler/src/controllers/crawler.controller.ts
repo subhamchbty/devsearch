@@ -79,7 +79,7 @@ const triggerPageCrawl = async (_req: Request, res: Response) => {
 
     const worker = new Worker(workerPath, {
         workerData: {
-            cooldownHours: Document.CRAWL_COOLDOWN_HOURS,
+            cooldownHours: DocumentPage.CRAWL_COOLDOWN_HOURS,
             delayBetweenMs: DELAY_BETWEEN_DISPATCHES_MS,
             batchSize: DISPATCH_BATCH_SIZE,
         },
