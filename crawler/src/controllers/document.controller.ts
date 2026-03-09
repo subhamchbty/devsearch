@@ -58,6 +58,15 @@ const addNewDocument = async (req: Request, res: Response) => {
 
     const documentRepo = dataSource.getRepository(Document);
 
+    // ── Duplicate check ──────────────────────────────────────────────
+    const existing = await documentRepo.findOneBy({ documentationOf, version });
+    if (existing) {
+        res.status(409).json({
+            message: `Document "${documentationOf}" version "${version}" already exists (id: ${existing.id})`,
+        });
+        return;
+    }
+
     try {
         const newDocument = documentRepo.create({
             documentationOf,

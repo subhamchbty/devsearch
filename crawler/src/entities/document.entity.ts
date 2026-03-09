@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { DocumentPage } from "./document-page.entity";
 import { Crawlable } from "./mixins/crawlable.mixin";
 
@@ -10,6 +10,7 @@ export enum DocumentationType {
 }
 
 @Entity("documents")
+@Unique("UQ_documents_name_version", ["documentationOf", "version"])
 export class Document extends Crawlable {
     @PrimaryGeneratedColumn()
     id: number;
