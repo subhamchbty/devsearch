@@ -117,44 +117,41 @@ describe("CrawlDocumentPageJob.handle()", () => {
         const page = makePage();
         mockDocumentPageFindOne.mockResolvedValue(page);
 
-        const mockFetch = jest.fn().mockResolvedValue({
-            ok: true,
-            text: jest.fn().mockResolvedValue("<html></html>"),
-        });
-        global.fetch = mockFetch as any;
+        const mockFetch = jest
+            .spyOn(global, "fetch")
+            .mockResolvedValue({
+                ok: true,
+                text: jest.fn().mockResolvedValue("<html></html>"),
+            } as any);
 
         const job = makeJob();
         await job.handle();
 
         expect(mockFetch).toHaveBeenCalledWith(page.url);
-
-        delete (global as any).fetch;
     });
 
     it("throws when the fetch response is not OK", async () => {
         const page = makePage();
         mockDocumentPageFindOne.mockResolvedValue(page);
 
-        global.fetch = jest.fn().mockResolvedValue({
+        jest.spyOn(global, "fetch").mockResolvedValue({
             ok: false,
             statusText: "Not Found",
-        }) as any;
+        } as any);
 
         const job = makeJob();
 
         await expect(job.handle()).rejects.toThrow(/Failed to fetch/);
-
-        delete (global as any).fetch;
     });
 
     it("extracts in-scope links, deduplicates, ignores external and empty hrefs", async () => {
         const page = makePage();
         mockDocumentPageFindOne.mockResolvedValue(page);
 
-        global.fetch = jest.fn().mockResolvedValue({
+        jest.spyOn(global, "fetch").mockResolvedValue({
             ok: true,
             text: jest.fn().mockResolvedValue(FIXTURE_HTML),
-        }) as any;
+        } as any);
 
         const job = makeJob();
         await job.handle();
@@ -168,27 +165,23 @@ describe("CrawlDocumentPageJob.handle()", () => {
         expect(urls).not.toContain("https://external.com");
         expect(urls).not.toContain("");
         expect(urls).toHaveLength(2); // deduplication: /docs/api appears twice
-
-        delete (global as any).fetch;
     });
 
     it("handles zero in-scope links gracefully (no upsert called)", async () => {
         const page = makePage();
         mockDocumentPageFindOne.mockResolvedValue(page);
 
-        global.fetch = jest.fn().mockResolvedValue({
+        jest.spyOn(global, "fetch").mockResolvedValue({
             ok: true,
             text: jest.fn().mockResolvedValue(
                 `<html><body><a href="https://external.com">Ext</a></body></html>`,
             ),
-        }) as any;
+        } as any);
 
         const job = makeJob();
         await job.handle();
 
         expect(mockDocumentPageUpsert).not.toHaveBeenCalled();
-
-        delete (global as any).fetch;
     });
 
     it("calls markPageCrawled BEFORE persistDiscoveredPages", async () => {
@@ -205,37 +198,38 @@ describe("CrawlDocumentPageJob.handle()", () => {
             return Promise.resolve();
         });
 
-        global.fetch = jest.fn().mockResolvedValue({
+        jest.spyOn(global, "fetch").mockResolvedValue({
             ok: true,
             text: jest.fn().mockResolvedValue(FIXTURE_HTML),
-        }) as any;
+        } as any);
 
         const job = makeJob();
         await job.handle();
 
         expect(callOrder).toEqual(["markPageCrawled", "persistDiscoveredPages"]);
-
-        delete (global as any).fetch;
     });
 
-    it("updates lastCrawledAt on the page (not the document)", async () => {
+    it("updates lastCrawledAt, content, and lastVisitedAt on the page (not the document)", async () => {
         const page = makePage();
         mockDocumentPageFindOne.mockResolvedValue(page);
 
-        global.fetch = jest.fn().mockResolvedValue({
+        const HTML = "<html><body>hello</body></html>";
+        jest.spyOn(global, "fetch").mockResolvedValue({
             ok: true,
-            text: jest.fn().mockResolvedValue("<html></html>"),
-        }) as any;
+            text: jest.fn().mockResolvedValue(HTML),
+        } as any);
 
         const job = makeJob();
         await job.handle();
 
         expect(mockDocumentPageUpdate).toHaveBeenCalledWith(
             page.id,
-            expect.objectContaining({ lastCrawledAt: expect.any(Date) }),
+            expect.objectContaining({
+                lastCrawledAt: expect.any(Date),
+                lastVisitedAt: expect.any(Date),
+                content: HTML,
+            }),
         );
-
-        delete (global as any).fetch;
     });
 
     describe("failed()", () => {
