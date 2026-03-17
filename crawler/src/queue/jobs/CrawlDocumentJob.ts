@@ -119,6 +119,5 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
     // ── Failed hook ─────────────────────────────────────────────────
     async failed(error: Error): Promise<void> {
         console.error(`${this.tag} Permanently failed: ${error.message}`);
-        // TODO: Send notification, log to DB, etc.
     }
 }
