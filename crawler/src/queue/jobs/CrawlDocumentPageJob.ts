@@ -82,14 +82,17 @@ export class CrawlDocumentPageJob extends Job<CrawlDocumentPagePayload> {
             const href = $(elem).attr("href") || "";
             if (!href) return;
 
-            let resolvedUrl: string;
+            let parsed: URL;
             try {
-                resolvedUrl = new URL(href, document.baseUrl).href;
+                parsed = new URL(href, document.baseUrl);
             } catch {
                 return;
             }
 
-            if (!resolvedUrl.startsWith(document.baseUrl)) return;
+            if (parsed.hash) return;
+            if (!parsed.href.startsWith(document.baseUrl)) return;
+
+            const resolvedUrl = parsed.href;
 
             // Do NOT set lastCrawledAt here — these pages have only been
             // discovered, not crawled. lastCrawledAt is set in markPageCrawled()

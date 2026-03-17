@@ -38,6 +38,8 @@ const FIXTURE_HTML = `<html><body>
   <a href="/docs/guide">Guide</a>
   <a href="/docs/api">API duplicate</a>
   <a href="">Empty</a>
+  <a href="#section">Fragment only</a>
+  <a href="/docs/api#overview">Fragment with path</a>
 </body></html>`;
 
 const BASE_URL = "https://react.dev";
@@ -153,6 +155,7 @@ describe("CrawlDocumentJob.handle()", () => {
         expect(urls).toContain(`${BASE_URL}/docs/guide`);
         expect(urls).not.toContain("https://external.com");
         expect(urls).not.toContain(""); // empty href
+        expect(urls.some((u) => u.includes("#"))).toBe(false); // fragment URLs excluded
         expect(urls).toHaveLength(2); // deduplication: /docs/api appears twice
 
         delete (global as any).fetch;
