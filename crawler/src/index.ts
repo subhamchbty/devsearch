@@ -4,7 +4,13 @@ import http from "http";
 import "reflect-metadata";
 import dataSource from "./config/dataSource";
 import { connectRedis } from "./config/redis";
-import { bootQueue, QueueManager, QueueWorker, ScheduleCrawlsJob } from "./queue";
+import {
+    bootQueue,
+    QueueManager,
+    QueueWorker,
+    ScheduleCrawlsJob,
+    SchedulePageCrawlsJob,
+} from "./queue";
 import router from "./routes";
 
 const app: Express = express();
@@ -41,6 +47,20 @@ dataSource
         } else {
             console.log(
                 "[Scheduler] CRAWL_SCHEDULE_MS not set — scheduled crawling disabled",
+            );
+        }
+
+        const pageScheduleMs = parseInt(process.env.PAGE_CRAWL_SCHEDULE_MS ?? "", 10);
+        if (!isNaN(pageScheduleMs) && pageScheduleMs > 0) {
+            try {
+                await SchedulePageCrawlsJob.schedule(pageScheduleMs);
+                console.log(`[Scheduler] Page crawl scheduled every ${pageScheduleMs}ms`);
+            } catch (err) {
+                console.error("[Scheduler] Failed to register page crawl schedule:", err);
+            }
+        } else {
+            console.log(
+                "[Scheduler] PAGE_CRAWL_SCHEDULE_MS not set — scheduled page crawling disabled",
             );
         }
 
