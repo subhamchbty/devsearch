@@ -24,34 +24,35 @@ async function run() {
         Date.now() - cooldownHours * 60 * 60 * 1000,
     );
 
-    let offset = 0;
+    // Keyset pagination: track the last seen ID so pages crawled during
+    // dispatch don't affect the result set of subsequent queries.
+    let lastSeenId = 0;
     let totalDispatched = 0;
 
     while (true) {
         const pages = await dataSource
             .getRepository(DocumentPage)
             .createQueryBuilder("page")
+            .select(["page.id"])
             .where(
-                "(page.lastCrawledAt IS NULL OR page.lastCrawledAt < :threshold)",
-                { threshold: cooldownThreshold },
+                "page.id > :lastSeenId AND (page.lastCrawledAt IS NULL OR page.lastCrawledAt < :threshold)",
+                { lastSeenId, threshold: cooldownThreshold },
             )
-            .skip(offset)
+            .orderBy("page.id", "ASC")
             .take(batchSize)
             .getMany();
 
         if (pages.length === 0) break;
 
         for (const page of pages) {
-            await CrawlDocumentPageJob.dispatch({
-                pageId: page.id,
-            });
+            await CrawlDocumentPageJob.dispatch({ pageId: page.id });
             totalDispatched++;
 
             // Wait between each dispatch to avoid spamming
             await sleep(delayBetweenMs);
         }
 
-        offset += batchSize;
+        lastSeenId = pages[pages.length - 1].id;
     }
 
     await dataSource.destroy();

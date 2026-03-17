@@ -40,6 +40,7 @@ const FIXTURE_HTML = `<html><body>
   <a href="">Empty</a>
   <a href="#section">Fragment only</a>
   <a href="/docs/api#overview">Fragment with path</a>
+  <a href="/docs-legacy/api">Other version</a>
 </body></html>`;
 
 const BASE_URL = "https://react.dev";
@@ -50,7 +51,7 @@ function makeDocument(overrides: Partial<Document> = {}): Document {
     const doc = new Document();
     doc.id = 1;
     doc.baseUrl = BASE_URL;
-    doc.documentationUrl = `${BASE_URL}/reference/react`;
+    doc.documentationUrl = `${BASE_URL}/docs`;
     doc.lastCrawledAt = null; // never crawled → canCrawl() === true
     return Object.assign(doc, overrides);
 }
@@ -119,18 +120,37 @@ describe("CrawlDocumentJob.handle()", () => {
         delete (global as any).fetch;
     });
 
-    it("throws when the fetch response is not OK", async () => {
+    it("throws a retryable error on 5xx responses", async () => {
         const doc = makeDocument();
         mockDocumentFindOneBy.mockResolvedValue(doc);
 
         global.fetch = jest.fn().mockResolvedValue({
             ok: false,
-            statusText: "Not Found",
+            status: 503,
+            statusText: "Service Unavailable",
         }) as any;
 
         const job = makeJob();
 
         await expect(job.handle()).rejects.toThrow(/Failed to fetch/);
+
+        delete (global as any).fetch;
+    });
+
+    it("throws an UnrecoverableError on 4xx responses (no retry)", async () => {
+        const { UnrecoverableError } = await import("bullmq");
+        const doc = makeDocument();
+        mockDocumentFindOneBy.mockResolvedValue(doc);
+
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: false,
+            status: 404,
+            statusText: "Not Found",
+        }) as any;
+
+        const job = makeJob();
+
+        await expect(job.handle()).rejects.toThrow(UnrecoverableError);
 
         delete (global as any).fetch;
     });
@@ -156,6 +176,7 @@ describe("CrawlDocumentJob.handle()", () => {
         expect(urls).not.toContain("https://external.com");
         expect(urls).not.toContain(""); // empty href
         expect(urls.some((u) => u.includes("#"))).toBe(false); // fragment URLs excluded
+        expect(urls).not.toContain(`${BASE_URL}/docs-legacy/api`); // out-of-scope version
         expect(urls).toHaveLength(2); // deduplication: /docs/api appears twice
 
         delete (global as any).fetch;

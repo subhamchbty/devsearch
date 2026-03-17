@@ -35,6 +35,7 @@ const FIXTURE_HTML = `<html><body>
   <a href="">Empty</a>
   <a href="#section">Fragment only</a>
   <a href="/docs/api#overview">Fragment with path</a>
+  <a href="/docs-legacy/api">Other version</a>
 </body></html>`;
 
 const BASE_URL = "https://react.dev";
@@ -45,7 +46,7 @@ function makeParentDocument(overrides: Partial<Document> = {}): Document {
     const doc = new Document();
     doc.id = 10;
     doc.baseUrl = BASE_URL;
-    doc.documentationUrl = `${BASE_URL}/reference/react`;
+    doc.documentationUrl = `${BASE_URL}/docs`;
     doc.lastCrawledAt = null;
     return Object.assign(doc, overrides);
 }
@@ -132,18 +133,35 @@ describe("CrawlDocumentPageJob.handle()", () => {
         expect(mockFetch).toHaveBeenCalledWith(page.url);
     });
 
-    it("throws when the fetch response is not OK", async () => {
+    it("throws a retryable error on 5xx responses", async () => {
         const page = makePage();
         mockDocumentPageFindOne.mockResolvedValue(page);
 
         jest.spyOn(global, "fetch").mockResolvedValue({
             ok: false,
-            statusText: "Not Found",
+            status: 503,
+            statusText: "Service Unavailable",
         } as any);
 
         const job = makeJob();
 
         await expect(job.handle()).rejects.toThrow(/Failed to fetch/);
+    });
+
+    it("throws an UnrecoverableError on 4xx responses (no retry)", async () => {
+        const { UnrecoverableError } = await import("bullmq");
+        const page = makePage();
+        mockDocumentPageFindOne.mockResolvedValue(page);
+
+        jest.spyOn(global, "fetch").mockResolvedValue({
+            ok: false,
+            status: 404,
+            statusText: "Not Found",
+        } as any);
+
+        const job = makeJob();
+
+        await expect(job.handle()).rejects.toThrow(UnrecoverableError);
     });
 
     it("extracts in-scope links, deduplicates, ignores external and empty hrefs", async () => {
@@ -167,6 +185,7 @@ describe("CrawlDocumentPageJob.handle()", () => {
         expect(urls).not.toContain("https://external.com");
         expect(urls).not.toContain("");
         expect(urls.some((u) => u.includes("#"))).toBe(false); // fragment URLs excluded
+        expect(urls).not.toContain(`${BASE_URL}/docs-legacy/api`); // out-of-scope version
         expect(urls).toHaveLength(2); // deduplication: /docs/api appears twice
     });
 

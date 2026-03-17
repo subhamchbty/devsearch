@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { UnrecoverableError } from "bullmq";
 import dataSource from "../../config/dataSource";
 import { Document, DocumentPage } from "../../entities";
 import { Job } from "../Job";
@@ -66,7 +67,12 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
         console.log(`${this.tag} Fetching ${url}`);
         const response = await fetch(url);
         if (!response.ok) {
-            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+            if (response.status >= 400 && response.status < 500) {
+                throw new UnrecoverableError(
+                    `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
+                );
+            }
+            throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
         }
         const html = await response.text();
         console.log(`${this.tag} Downloaded ${url} (${html.length} chars)`);
@@ -84,13 +90,21 @@ export class CrawlDocumentJob extends Job<CrawlDocumentPayload> {
 
             let parsed: URL;
             try {
-                parsed = new URL(href, document.baseUrl);
+                parsed = new URL(href, document.documentationUrl);
             } catch {
                 return;
             }
 
             if (parsed.hash) return;
-            if (!parsed.href.startsWith(document.baseUrl)) return;
+
+            const scope = document.documentationUrl.endsWith("/")
+                ? document.documentationUrl
+                : document.documentationUrl + "/";
+            if (
+                parsed.href !== document.documentationUrl &&
+                !parsed.href.startsWith(scope)
+            )
+                return;
 
             const resolvedUrl = parsed.href;
 
