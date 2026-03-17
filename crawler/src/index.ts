@@ -4,7 +4,7 @@ import http from "http";
 import "reflect-metadata";
 import dataSource from "./config/dataSource";
 import { connectRedis } from "./config/redis";
-import { bootQueue, QueueManager, QueueWorker } from "./queue";
+import { bootQueue, QueueManager, QueueWorker, ScheduleCrawlsJob } from "./queue";
 import router from "./routes";
 
 const app: Express = express();
@@ -28,6 +28,21 @@ dataSource
             queues: ["default"],
             concurrency: 2,
         });
+
+        // Schedule automatic crawls if configured
+        const scheduleMs = parseInt(process.env.CRAWL_SCHEDULE_MS ?? "", 10);
+        if (!isNaN(scheduleMs) && scheduleMs > 0) {
+            try {
+                await ScheduleCrawlsJob.schedule(scheduleMs);
+                console.log(`[Scheduler] Crawl scheduled every ${scheduleMs}ms`);
+            } catch (err) {
+                console.error("[Scheduler] Failed to register crawl schedule:", err);
+            }
+        } else {
+            console.log(
+                "[Scheduler] CRAWL_SCHEDULE_MS not set — scheduled crawling disabled",
+            );
+        }
 
         const server = http.createServer(app);
 

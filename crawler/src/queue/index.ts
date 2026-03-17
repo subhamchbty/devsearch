@@ -8,12 +8,12 @@ export { QueueManager } from "./QueueManager";
 export { QueueWorker } from "./QueueWorker";
 
 // ── Export Jobs ───────────────────────────────────────────────────
-export { CrawlDocumentJob, CrawlDocumentPageJob } from "./jobs/";
+export { CrawlDocumentJob, CrawlDocumentPageJob, ScheduleCrawlsJob } from "./jobs/";
 
 // ── Convenience bootstrap ───────────────────────────────────────────
 import { registerJobs } from "./JobRegistry";
 import { QueueWorker } from "./QueueWorker";
-import { CrawlDocumentJob, CrawlDocumentPageJob } from "./jobs";
+import { CrawlDocumentJob, CrawlDocumentPageJob, ScheduleCrawlsJob } from "./jobs";
 
 /**
  * Boot the queue system — register all jobs and start workers.
@@ -32,7 +32,7 @@ export function bootQueue(
     const { queues = ["default"], concurrency = 1 } = options;
 
     // 1. Register all job handlers
-    registerJobs(CrawlDocumentJob, CrawlDocumentPageJob);
+    registerJobs(CrawlDocumentJob, CrawlDocumentPageJob, ScheduleCrawlsJob);
 
     // 2. Start a worker for each specified queue
     const workers: QueueWorker[] = queues.map((queueName) => {
