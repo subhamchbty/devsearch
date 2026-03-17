@@ -51,7 +51,7 @@ export class CrawlDocumentPageJob extends Job<CrawlDocumentPagePayload> {
         const html = await this.fetchPage(page.url);
         const discoveredPages = this.extractPages(html, page.document);
 
-        await this.markPageCrawled(pageId);
+        await this.markPageCrawled(pageId, html);
         await this.persistDiscoveredPages(discoveredPages);
 
         console.log(
@@ -103,10 +103,13 @@ export class CrawlDocumentPageJob extends Job<CrawlDocumentPagePayload> {
         return [...new Map(pages.map((p) => [p.url, p])).values()];
     }
 
-    /** Update the page's lastCrawledAt timestamp. */
-    private async markPageCrawled(pageId: number): Promise<void> {
+    /** Update the page's lastCrawledAt timestamp, content, and lastVisitedAt. */
+    private async markPageCrawled(pageId: number, html: string): Promise<void> {
+        const now = new Date();
         await dataSource.getRepository(DocumentPage).update(pageId, {
-            lastCrawledAt: new Date(),
+            lastCrawledAt: now,
+            lastVisitedAt: now,
+            content: html,
         });
     }
 
