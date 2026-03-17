@@ -5,7 +5,8 @@ import dataSource from "../config/dataSource";
 import { Document, DocumentPage } from "../entities";
 import { CrawlDocumentJob, CrawlDocumentPageJob } from "../queue";
 
-const DELAY_BETWEEN_DISPATCHES_MS = 2 * 60 * 1000; // 2 minutes
+const _parsedDelay = parseInt(process.env.PAGE_CRAWL_DISPATCH_DELAY_MS ?? "", 10);
+const DELAY_BETWEEN_DISPATCHES_MS = !isNaN(_parsedDelay) && _parsedDelay >= 0 ? _parsedDelay : 500;
 const DISPATCH_BATCH_SIZE = 100;
 
 const triggerCrawl = async (req: Request, res: Response) => {
