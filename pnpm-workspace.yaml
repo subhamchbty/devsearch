@@ -1,0 +1,6 @@
+packages:
+  - crawler
+  - engine
+  - indexer
+  - embedder
+  - client
