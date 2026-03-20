@@ -1,132 +1,67 @@
 # DevSearch
 
-> A high-performance semantic search engine for developer documentation.
-
-DevSearch allows developers to search across official documentation of programming languages, frameworks, and tools, returning precise, ranked snippets instead of generic links.
-
-**This is not a chatbot — it is a precision documentation retrieval engine.**
+A self-hostable semantic search engine for your team's internal documentation. Connect your GitHub repos and markdown files. Get semantic search across all of them in minutes.
 
 ---
 
-## Table of Contents
+## Overview
 
-- [Vision](#vision)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Running the Services](#running-the-services)
-- [Testing](#testing)
-- [Environment Variables](#environment-variables)
-- [Roadmap](#roadmap)
-- [Development Principles](#development-principles)
+DevSearch indexes your internal documentation — markdown files, ADRs, RFCs, GitHub repos — and makes them semantically searchable. Instead of keyword matching, DevSearch understands meaning, so searching for "why did we choose postgres" finds the ADR that explains your database decision even if it never uses those exact words.
 
----
-
-## Vision
-
-Developers waste time jumping between documentation sites, searching imprecise keywords, and scrolling through irrelevant results.
-
-DevSearch aims to:
-
-- Provide **semantic + keyword hybrid search** across official documentation
-- **Preserve documentation structure** (headings, code blocks, versions)
-- Return **exact, relevant snippets** rather than page-level links
-- Support **version-aware filtering**
-- Optionally provide **AI-powered explanations** via a RAG layer (Phase 2)
-
----
-
-## Features
-
-### Phase 1 (Current)
-
-- **Hybrid Search** — BM25 keyword matching combined with vector similarity for high-precision results
-- **Documentation Crawling** — Structured ingestion of official documentation sites with heading hierarchy and code block preservation
-- **Chunked Indexing** — Raw HTML → clean content → 400–800 token chunks with full metadata
-- **Ranked Snippet Results** — Score normalization, merging, and re-ranking for optimal relevance
-- **Version-Aware Metadata** — Framework version is a first-class attribute on every indexed chunk
-- **Target Latency** — < 300 ms per query (without LLM)
-- **10 selected frameworks** supported in Phase 1
-
-### Phase 2 (Planned)
-
-- LLM-based explanations (RAG layer, opt-in per query)
-- Version filtering UI
-- Code syntax highlighting
-- User feedback and upvote system
-
-### Phase 3 (Future)
-
-- Personalization
-- CLI tool
-- VSCode extension
-- Query analytics dashboard
-- Automated documentation change detection
+Built as an open-source, self-hostable alternative to expensive enterprise knowledge search tools.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│           Frontend (Next.js)            │
-└────────────────────┬────────────────────┘
-                     │
-┌────────────────────▼────────────────────┐
-│         Engine — Search API (NestJS)    │
-│                                         │
-│  User Query → Clean → Embed → Search   │
-│  BM25 + Vector → Normalize → Re-rank   │
-└────────┬──────────────────┬─────────────┘
-         │                  │
-┌────────▼────────┐  ┌──────▼──────────┐
-│   pgvector /    │  │   PostgreSQL    │
-│   Qdrant        │  │  (metadata,     │
-│  (embeddings)   │  │   analytics)    │
-└─────────────────┘  └─────────────────┘
-
-Background Pipeline:
-┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
-│ Crawler  │ → │ Indexer  │ → │ Embedder │ → │  Store   │
-│(Express) │   │(Express) │   │(Express) │   │ (DB/Vec) │
-└──────────┘   └──────────┘   └──────────┘   └──────────┘
+Next.js Frontend
+      ↓ HTTP
+NestJS Application
+  ├── ConnectorModule     — fetches documents from sources (filesystem, GitHub)
+  ├── NormalizerModule    — outputs standard Document schema
+  ├── ChunkerModule       — splits large docs into indexable chunks
+  ├── EmbedderModule      — generates vectors via BullMQ workers
+  └── SearchModule        — semantic search HTTP API
+      ↓
+Postgres + pgvector       — vector storage and search
+Redis                     — BullMQ job queues between pipeline stages
 ```
 
-### Core Services
+**Pipeline flow:**
+```
+Connector → Normalizer → Chunker → Embedder → pgvector index → Search API
+```
 
-| Service      | Responsibility                                               |
-| ------------ | ------------------------------------------------------------ |
-| **engine**   | Search API — query processing, hybrid search, result ranking |
-| **crawler**  | Documentation ingestion — crawl, extract, deduplicate        |
-| **indexer**  | Indexing pipeline — clean, chunk, attach metadata            |
-| **embedder** | Embedding generation for chunks and queries                  |
-| **client**   | Next.js frontend — search UI                                 |
-
-### Key Architecture Decisions
-
-1. **Hybrid search from day one** — pure embeddings are insufficient for developer queries; keyword matching is essential.
-2. **Structure preservation** — heading hierarchy and separate code block extraction significantly improve retrieval quality.
-3. **Separation of concerns** — the crawler does not embed, the search service does not crawl, and the indexer handles the pipeline independently.
-4. **Version-aware design** — documentation is version-sensitive; version metadata is mandatory on every chunk.
-5. **Feedback loop** — user interactions (clicks, upvotes) inform ranking adjustments.
+Each pipeline stage communicates asynchronously via BullMQ queues backed by Redis. This gives the pipeline retry handling, job state tracking, and failure isolation without the overhead of separate services.
 
 ---
 
-## Tech Stack
+## Features
 
-| Layer                                            | Technology                                         |
-| ------------------------------------------------ | -------------------------------------------------- |
-| Frontend                                         | Next.js 16, React 19, Tailwind CSS 4, TypeScript 5 |
-| Search API (Engine)                              | NestJS 11, TypeScript 5                            |
-| Background Services (Crawler, Indexer, Embedder) | Express 5, TypeScript 5                            |
-| Primary Database                                 | PostgreSQL 17+ with pgvector                       |
-| Vector Storage                                   | pgvector (MVP) → Qdrant (scale)                    |
-| Caching                                          | Redis 7                                            |
-| Package Manager                                  | pnpm                                               |
-| Linting / Formatting                             | ESLint 9, Prettier 3                               |
+- **Semantic search** — pgvector-powered similarity search, not just keyword matching
+- **Filesystem connector** — index local markdown files, ADRs, RFCs from any directory
+- **GitHub connector** — index markdown files, READMEs, and docs from any GitHub repo
+- **Async pipeline** — BullMQ-driven connector → chunk → embed pipeline with retries
+- **Self-hostable** — runs entirely on your infrastructure, your data never leaves
+- **Observable** — OpenTelemetry instrumentation across the full pipeline
+
+---
+
+## Quick Start
+
+```bash
+# Clone the repo
+git clone https://github.com/subhamchbty/devsearch
+cd devsearch
+
+# Start all services
+docker-compose up
+
+# DevSearch is now running at http://localhost:3000
+```
+
+Requires Docker and Docker Compose. No other dependencies.
 
 ---
 
@@ -134,222 +69,54 @@ Background Pipeline:
 
 ```
 devsearch/
-├── client/          # Next.js frontend (search UI)
-├── engine/          # Search API service (NestJS)
-├── crawler/         # Documentation crawler service (Express)
-├── indexer/         # Indexing pipeline worker (Express)
-├── embedder/        # Embedding generation service (Express)
-├── .devcontainer/   # Dev container configuration
-└── project-requirements.md
-```
-
-The **engine** service uses the NestJS module structure:
-
-```
-engine/
-├── src/
-│   ├── main.ts
-│   ├── app.module.ts
-│   ├── app.controller.ts
-│   └── app.service.ts
-├── test/
-├── package.json
-└── tsconfig.json
-```
-
-The **crawler**, **indexer**, and **embedder** services use a lightweight Express setup:
-
-```
-<service>/
-├── src/
-│   └── index.ts
-├── package.json
-└── tsconfig.json
-```
-
----
-
-## Prerequisites
-
-- **Node.js** 22 LTS or later
-- **pnpm** (latest) — `npm install -g pnpm`
-- **PostgreSQL** 17+ with the [pgvector](https://github.com/pgvector/pgvector) extension
-- **Docker** (recommended — the project includes a full dev container setup)
-
----
-
-## Installation
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/subhamchbty/devsearch.git
-cd devsearch
-
-# 2. Install dependencies for each service
-for svc in client crawler embedder engine indexer; do
-  (cd $svc && pnpm install)
-done
-```
-
-Or simply open the project in a **GitHub Codespace** / **VS Code Dev Container** — the `postCreateCommand` installs everything automatically.
-
----
-
-## Running the Services
-
-### Development
-
-Open a separate terminal for each service:
-
-```bash
-# Frontend — http://localhost:3000
-cd client && pnpm dev
-
-# Search API — http://localhost:3004
-cd engine && pnpm run start:dev
-
-# Crawler — http://localhost:3001
-cd crawler && pnpm dev
-
-# Indexer — http://localhost:3002
-cd indexer && pnpm dev
-
-# Embedder — http://localhost:3003
-cd embedder && pnpm dev
-```
-
-### Production
-
-```bash
-# Build all services
-for svc in client crawler embedder engine indexer; do
-  (cd $svc && pnpm run build)
-done
-
-# Start each service
-cd client   && pnpm start
-cd engine   && pnpm run start:prod
-cd crawler  && pnpm start
-cd indexer  && pnpm start
-cd embedder && pnpm start
-```
-
----
-
-## Testing
-
-Run these commands from within the relevant service directory:
-
-```bash
-# Unit tests
-pnpm run test
-
-# Watch mode
-pnpm run test:watch
-
-# Coverage report
-pnpm run test:cov
-
-# End-to-end tests
-pnpm run test:e2e
-```
-
-### Linting & Formatting
-
-```bash
-# Lint TypeScript files
-pnpm run lint
-
-# Format with Prettier
-pnpm run format
-```
-
----
-
-## Environment Variables
-
-Create a `.env` file in the root of each service (or in the monorepo root) as needed.
-
-### Engine
-
-```env
-PORT=3004
-NODE_ENV=development
-```
-
-### Database
-
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/devsearch
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_USER=devsearch_user
-DATABASE_PASSWORD=your_password
-DATABASE_NAME=devsearch
-```
-
-### Vector Database (Qdrant, Phase 2+)
-
-```env
-VECTOR_DB_URL=http://localhost:6333
-VECTOR_DB_API_KEY=your_api_key
-```
-
-### Embeddings (Phase 2+)
-
-```env
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_API_KEY=your_api_key
-```
-
-### LLM Integration (Phase 2+)
-
-```env
-LLM_PROVIDER=openai
-LLM_API_KEY=your_api_key
-LLM_MODEL=gpt-4-turbo
-```
-
-### Caching (optional)
-
-```env
-REDIS_URL=redis://localhost:6379
-CACHE_ENABLED=true
-CACHE_TTL=3600
-```
-
-### Crawler
-
-```env
-CRAWLER_RATE_LIMIT=10
-CRAWLER_TIMEOUT=30000
-CRAWLER_USER_AGENT=DevSearchBot/1.0
+├── apps/
+│   ├── web/                  # Next.js frontend
+│   └── api/                  # NestJS application
+│       ├── src/
+│       │   ├── connector/    # Filesystem and GitHub connectors
+│       │   ├── normalizer/   # Document schema normalization
+│       │   ├── chunker/      # Document chunking
+│       │   ├── embedder/     # Vector embedding via BullMQ workers
+│       │   └── search/       # Search API
+├── infra/                    # Terraform IaC for EKS deployment
+│   ├── modules/
+│   │   ├── vpc/
+│   │   ├── eks/
+│   │   ├── rds/
+│   │   ├── elasticache/
+│   │   └── s3/
+│   └── environments/
+│       ├── dev/
+│       └── prod/
+├── helm/                     # Helm chart for Kubernetes deployment
+│   └── devsearch/
+├── k8s/                      # Raw Kubernetes manifests
+├── docs/
+│   ├── getting-started.md
+│   ├── connectors/
+│   │   ├── filesystem.md
+│   │   └── github.md
+│   ├── configuration.md
+│   └── adr/                  # Architectural Decision Records
+├── docker-compose.yml
+└── README.md
 ```
 
 ---
 
 ## Roadmap
 
-| Phase   | Status         | Highlights                                                       |
-| ------- | -------------- | ---------------------------------------------------------------- |
-| Phase 1 | 🚧 In Progress | Hybrid search, 10 frameworks, snippet results, clean UI          |
-| Phase 2 | 📋 Planned     | LLM explanations (RAG), version filtering UI, feedback system    |
-| Phase 3 | 🔭 Future      | CLI tool, VSCode extension, personalization, analytics dashboard |
+- [ ] Filesystem connector
+- [ ] GitHub connector
+- [ ] Confluence connector
+- [ ] Notion connector
+- [ ] Slack connector
+- [ ] Re-indexing from S3 raw store without re-fetching
+- [ ] Multi-tenant support
+- [ ] Web UI for connector management
 
 ---
 
-## Development Principles
+## License
 
-- **Optimize relevance over complexity** — a better index beats a bigger model.
-- **Measure latency continuously** — the 300 ms target is non-negotiable.
-- **Preserve semantic structure** — headings and code blocks are first-class data.
-- **Ship small, iterate fast** — working retrieval ships before optional LLM features.
-
----
-
-## Non-Goals (Phase 1)
-
-- Conversational chatbot
-- Full web / internet search
-- Community Q&A platform
-- Auto-crawling the entire internet
+MIT
