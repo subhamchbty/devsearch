@@ -1,7 +1,0 @@
-{
-    "name": "devsearch",
-    "private": true,
-    "scripts": {
-        "dev": "pnpm --filter devsearch-crawler dev"
-    }
-}
